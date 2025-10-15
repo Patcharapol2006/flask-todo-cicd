@@ -84,7 +84,7 @@ class TestTodoAPI:
         data = response.get_json()
         assert data['success'] is True
         assert data['data']['title'] == 'Test Todo Only Title'
-        assert data['data']['description'] == ''
+        assert data['data']['description'] is None
     
     def test_create_todo_without_title(self, client):
         """Test creating todo without title fails validation"""
