@@ -1,21 +1,26 @@
 import os
-from flask import Flask, jsonify
-from app.models import db
-from app.routes import api
-from app.config import config
 from sqlalchemy import inspect
+from flask import Flask, jsonify
+
+# Third-party imports
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+# Local application imports
+from app.config import config
+from app.models import db
+from app.routes import api
 
-# ✅ สร้าง limiter แบบ factory-compatible (ยังไม่ผูกกับ app)
+
+# สร้าง limiter แบบ factory-compatible (ยังไม่ผูกกับ app)
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"]
 )
 
+
+# เพิ่ม 2 บรรทัดว่างตามมาตรฐาน PEP 8 (E302)
 def create_app(config_name=None):
-    
     """Application factory pattern"""
     if config_name is None:
         config_name = os.getenv('FLASK_ENV', 'development')
@@ -26,7 +31,7 @@ def create_app(config_name=None):
 
     # Initialize extensions
     db.init_app(app)
-    limiter.init_app(app)  # ✅ ผูก limiter กับ app ตรงนี้
+    limiter.init_app(app)  # ผูก limiter กับ app ตรงนี้
 
     # Register blueprints
     app.register_blueprint(api, url_prefix='/api')
@@ -53,27 +58,26 @@ def create_app(config_name=None):
 
     @app.errorhandler(500)
     def internal_error(error):
+        db.session.rollback()  # Rollback a session in case of internal errors
         return jsonify({
             'success': False,
             'error': 'Internal server error'
         }), 500
 
-    # ✅ Create tables safely within context
-    with app.app_context():
-        inspector = inspect(db.engine)
-        existing_tables = inspector.get_table_names()
-        if 'todos' not in existing_tables:
-            db.create_all()
-
-    # ✅ Global exception handler
     @app.errorhandler(Exception)
     def handle_exception(error):
         """Handle all unhandled exceptions gracefully"""
-        with app.app_context():
-            db.session.rollback()
+        db.session.rollback()
         return jsonify({
             'success': False,
-            'error': 'Internal server error'
+            'error': 'An unexpected error occurred. Please try again later.'
         }), 500
 
+    # Create tables safely within context
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table("todos"):
+            db.create_all()
+
     return app
+

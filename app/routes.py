@@ -1,7 +1,9 @@
-from flask import Blueprint, request, jsonify
-from app.models import db, Todo
+from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.models import Todo, db
+
+# Create a Blueprint which will be registered to the app in the factory
 api = Blueprint('api', __name__)
 
 
@@ -9,6 +11,7 @@ api = Blueprint('api', __name__)
 def health_check():
     """Health check endpoint for monitoring"""
     try:
+        # A simple query to check the database connection
         db.session.execute(db.text('SELECT 1'))
         return jsonify({
             'status': 'healthy',
@@ -26,10 +29,7 @@ def health_check():
 def get_todos():
     """Get all todo items"""
     try:
-        todos = Todo.query.order_by(
-            Todo.created_at.desc(),
-            Todo.id.desc()).all()
-
+        todos = Todo.query.order_by(Todo.created_at.desc()).all()
         return jsonify({
             'success': True,
             'data': [todo.to_dict() for todo in todos],
@@ -44,7 +44,7 @@ def get_todos():
 
 @api.route('/todos/<int:todo_id>', methods=['GET'])
 def get_todo(todo_id):
-    """Get a specific todo item"""
+    """Get a specific todo item by its ID"""
     todo = Todo.query.get(todo_id)
     if not todo:
         return jsonify({
@@ -72,7 +72,7 @@ def create_todo():
     try:
         todo = Todo(
             title=data['title'],
-            description=data.get('description', '')
+            description=data.get('description')
         )
         db.session.add(todo)
         db.session.commit()
@@ -101,14 +101,17 @@ def update_todo(todo_id):
         }), 404
 
     data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Request body is empty'}), 400
 
     try:
+        # Update fields only if they exist in the request data
         if 'title' in data:
             todo.title = data['title']
         if 'description' in data:
             todo.description = data['description']
         if 'completed' in data:
-            todo.completed = data['completed']
+            todo.completed = bool(data['completed'])
 
         db.session.commit()
 
@@ -149,4 +152,4 @@ def delete_todo(todo_id):
             'success': False,
             'error': 'Failed to delete todo'
         }), 500
-    
+
