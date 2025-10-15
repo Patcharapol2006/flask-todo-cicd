@@ -331,7 +331,7 @@ class TestAppFactory:
         with app.test_client() as test_client:
             response = test_client.get('/test-error')
             assert response.status_code == 500
-            assert 'Internal server error' in response.get_json()['error']
+            assert response.get_json()['error'] == 'An unexpected error occurred. Please try again later.'
         
         # 3. เปิด TESTING mode กลับ
         app.config['TESTING'] = True
