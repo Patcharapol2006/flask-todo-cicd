@@ -15,7 +15,6 @@ limiter = Limiter(
 )
 
 def create_app(config_name=None):
-
     
     """Application factory pattern"""
     if config_name is None:
